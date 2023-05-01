@@ -422,9 +422,9 @@ class VanillaDataManager(DataManager):  # pylint: disable=abstract-method
     def next_train(self, step: int) -> Tuple[RayBundle, Dict]:
         """Returns the next batch of data from the train dataloader."""
         self.train_count += 1
-        image_batch = next(self.iter_train_image_dataloader)
-        batch = self.train_pixel_sampler.sample(image_batch)
-        ray_indices = batch["indices"]
+        image_batch = next(self.iter_train_image_dataloader)#这里得到像片集
+        batch = self.train_pixel_sampler.sample(image_batch)#这里得到被选为光线的像素集
+        ray_indices = batch["indices"]#这里得到一个indices.shape = (num_rays_per_batch, 3)  每一行代表一个被采为光线的像素的（像片号，行号，列号）
         ray_bundle = self.train_ray_generator(ray_indices)
         return ray_bundle, batch
 

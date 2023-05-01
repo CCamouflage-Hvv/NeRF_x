@@ -6,7 +6,7 @@ from typing import Dict, Tuple, Type
 import torch
 
 from nerfstudio.cameras.rays import RayBundle
-from nerfstudio.model_components.losses import DepthLossType, depth_loss
+from nerfstudio.model_components.losses import DepthLossType, depth_loss,occlusion_regularization_loss
 from nerfstudio.models.bakedsdf import BakedSDFFactoModel,BakedSDFModelConfig
 from nerfstudio.utils import colormaps
 
@@ -29,6 +29,9 @@ class DepthBakedSDFModelConfig(BakedSDFModelConfig):
     sigma_decay_rate: float = 0.99985
     """Rate of exponential decay."""
     depth_loss_type: DepthLossType = DepthLossType.DS_NERF
+    """depth_loss_type used to calculate the depth loss"""
+    use_occlusion_regularization: bool =False
+    """whether use occlusion_regularization"""
 
 class DepthBakedSDFModel(BakedSDFFactoModel):
     config:DepthBakedSDFModelConfig
@@ -51,6 +54,7 @@ class DepthBakedSDFModel(BakedSDFFactoModel):
     def get_metrics_dict(self, outputs, batch):
         metrics_dict = super().get_metrics_dict(outputs, batch)
         if self.training:
+            #depth loss
             metrics_dict["depth_loss"] = 0.0
             sigma = self._get_sigma().to(self.device)
             termination_depth = batch["depth_image"].to(self.device)
@@ -67,6 +71,15 @@ class DepthBakedSDFModel(BakedSDFFactoModel):
                     depth_loss_type=self.config.depth_loss_type,
                 ) / len(outputs["weights_list"])
 
+            #Occlusion regularization loss from Free-NeRF, set M = 10 here
+            if self.config.use_occlusion_regularization:
+                metrics_dict["occ_reg_loss"] = 0.0
+                for i in range(len(outputs["weights_list"])):
+                    metrics_dict["occ_reg_loss"] += occlusion_regularization_loss(
+                        weights=outputs["weights_list"][i],#这里每次传入的是一个光线束
+                        M_index = 20,
+                    )/ len(outputs["weights_list"]) #TODO: Is this "/ len(outputs["weights_list"])" really necessary?
+
         return metrics_dict
     
     def get_loss_dict(self, outputs, batch, metrics_dict=None):
@@ -74,6 +87,9 @@ class DepthBakedSDFModel(BakedSDFFactoModel):
         if self.training:
             assert metrics_dict is not None and "depth_loss" in metrics_dict
             loss_dict["depth_loss"] = self.config.depth_loss_mult * metrics_dict["depth_loss"]
+
+            if metrics_dict is not None and "occ_reg_loss" in metrics_dict:
+                loss_dict["occ_reg_loss"] = metrics_dict["occ_reg_loss"]
 
         return loss_dict
 

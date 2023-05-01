@@ -176,7 +176,8 @@ class SDFStudioDataParserConfig(DataParserConfig):
     """How much to scale the camera origins by."""
     depth_unit_scale_factor: float = 1
     """Scales the depth values to meters. Default value is 0.001 for a millimeter to meter conversion."""
-
+    sparse_inputs :bool = False
+    """make input views sparse manually(for few-show performance test)"""
 @dataclass
 class SDFStudio(DataParser):
     """SDFStudio Dataset"""
@@ -210,6 +211,8 @@ class SDFStudio(DataParser):
         camera_to_worlds = []
         for i, frame in enumerate(meta["frames"]):
             if i not in indices:
+                continue
+            if self.config.sparse_inputs and i%3!=0:
                 continue
 
             image_filename = self.config.data / frame["rgb_path"]

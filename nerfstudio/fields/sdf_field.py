@@ -38,7 +38,8 @@ from nerfstudio.field_components.encodings import (
 from nerfstudio.field_components.field_heads import FieldHeadNames
 from nerfstudio.field_components.spatial_distortions import SpatialDistortion
 from nerfstudio.fields.base_field import Field, FieldConfig
-
+from rich.console import Console
+CONSOLE = Console(width=120)
 try:
     import tinycudann as tcnn
 except ImportError:
@@ -167,7 +168,12 @@ class SDFFieldConfig(FieldConfig):
     """Padding added to the RGB outputs"""
     off_axis: bool = False
     """whether to use off axis encoding from mipnerf360"""
-
+    use_positional_encoding_regularization :bool = False
+    step_for_regularization: int = 0 
+    """use to changed the positional encoding frequences"""
+    max_num_iterations:int = 100000
+    max_position_encoding_regularization_iter_portion :float = 0.7
+    """ max_position_encoding_regularization_iteration portion of total training iteration"""
 
 class SDFField(Field):
     """_summary_
@@ -189,6 +195,9 @@ class SDFField(Field):
         super().__init__()
         self.config = config
 
+        # positional regularization from Free NeRF
+        self.step_for_reg = self.config.step_for_regularization
+        self.max_position_encoding_reg_portion = self.config.max_position_encoding_regularization_iter_portion
         # TODO do we need aabb here?
         self.aabb = Parameter(aabb, requires_grad=False)
 
@@ -240,6 +249,7 @@ class SDFField(Field):
         # we concat inputs position ourselves
         self.position_encoding = NeRFEncoding(
             in_dim=3,
+            #这个position_encoding_max_degree就是FreeNeRF的第一个正则化的点，我打算写一个training callback
             num_frequencies=self.config.position_encoding_max_degree,
             min_freq_exp=0.0,
             max_freq_exp=self.config.position_encoding_max_degree - 1,
@@ -248,9 +258,8 @@ class SDFField(Field):
         )
 
         self.direction_encoding = NeRFEncoding(
-            in_dim=3, num_frequencies=4, min_freq_exp=0.0, max_freq_exp=3.0, include_input=True
+            in_dim=3, num_frequencies=8, min_freq_exp=0.0, max_freq_exp=7.0, include_input=True
         )
-
         # TODO move it to field components
         # MLP with geometric initialization
         dims = [self.config.hidden_dim for _ in range(self.config.num_layers)]
@@ -295,7 +304,7 @@ class SDFField(Field):
 
         # laplace function for transform sdf to density from VolSDF
         self.laplace_density = LaplaceDensity(init_val=self.config.beta_init)
-        # self.laplace_density = SigmoidDensity(init_val=self.config.beta_init)
+        # self.laplace_density = SigmoidDensity(init_val=self.config.beta_init) #这个sigmoidDensity是NeuS的方法
 
         # TODO use different name for beta_init for config
         # deviation_network to compute alpha from sdf from NeuS
@@ -358,8 +367,16 @@ class SDFField(Field):
             feature = self.encoding(positions)
         else:
             feature = torch.zeros_like(inputs[:, :1].repeat(1, self.encoding.n_output_dims))
-
-        pe = self.position_encoding(inputs)
+        if(self.config.use_positional_encoding_regularization):
+            pe_reg_duration_iter = int(self.max_position_encoding_reg_portion*self.config.max_num_iterations)
+            #CONSOLE.print(f"[bold yellow]self.step_for_reg={self.step_for_reg}")#
+            pe = self.position_encoding.encoding_with_regularization(inputs=inputs,
+                                                                     step=self.step_for_reg,
+                                                                     pe_reg_duration_iter=pe_reg_duration_iter)
+            # CONSOLE.print(f"[bold yellow]pe_with_reg.shape={pe.shape}")#
+            # CONSOLE.print(f"[bold yellow]pe_reg_duration_iter={pe_reg_duration_iter}")#
+        else:
+            pe = self.position_encoding(in_tensor=inputs)
 
         inputs = torch.cat((inputs, pe, feature), dim=-1)
 
@@ -400,7 +417,7 @@ class SDFField(Field):
         )[0]
         return gradients
 
-    def get_density(self, ray_samples: RaySamples):
+    def get_density(self, ray_samples: RaySamples):#体素密度
         """Computes and returns the densities."""
         positions = ray_samples.frustums.get_start_positions()
         positions_flat = positions.view(-1, 3)
@@ -479,9 +496,9 @@ class SDFField(Field):
         if self.config.use_reflections:
             # https://github.com/google-research/multinerf/blob/5d4c82831a9b94a87efada2eee6a993d530c4226/internal/ref_utils.py#L22
             refdirs = 2.0 * torch.sum(normals * -directions, axis=-1, keepdims=True) * normals + directions
-            d = self.direction_encoding(refdirs)
+            d = self.direction_encoding(in_tensor = refdirs)
         else:
-            d = self.direction_encoding(directions)
+            d = self.direction_encoding(in_tensor = directions)
 
         # appearance
         if self.training:

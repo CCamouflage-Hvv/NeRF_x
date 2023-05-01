@@ -48,8 +48,8 @@ def collate_image_dataset_batch(batch: Dict, num_rays_per_batch: int, keep_full_
             torch.rand((num_rays_per_batch, 3), device=device)
             * torch.tensor([num_images, image_height, image_width], device=device)
         ).long()
-    #print("batch.indices = ",indices)
-    c, y, x = (i.flatten() for i in torch.split(indices, 1, dim=-1))
+    #print("batch.indices = ",indices)#此时得到indices.shape = (num_rays_per_batch, 3)  每一行代表一个被采为光线的像素的（像片号，行号，列号）
+    c, y, x = (i.flatten() for i in torch.split(indices, 1, dim=-1))#（c,y,x)对应（像片号，行号，列号）
     collated_batch = {
         key: value[c, y, x]
         for key, value in batch.items()

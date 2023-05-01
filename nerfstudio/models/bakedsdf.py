@@ -88,6 +88,8 @@ class BakedSDFModelConfig(VolSDFModelConfig):
     """Max num iterations for the annealing of beta in laplacian density."""
     use_spatial_varying_eikonal_loss: bool = False
     """whether to use different weight of eikonal loss based the points norm, farway points have large weights"""
+    use_position_encoding_regularization: bool = True
+    """whether to use position_encoding_regularization"""
     eikonal_loss_mult_start: float = 0.01
     eikonal_loss_mult_end: float = 0.1
     eikonal_loss_mult_slop: float = 2.0
@@ -105,7 +107,6 @@ class BakedSDFFactoModel(VolSDFModel):
     def populate_modules(self):
         """Set the fields and modules."""
         super().populate_modules()
-
         self.density_fns = []
         num_prop_nets = self.config.num_proposal_iterations
         # Build the proposal network(s)
@@ -226,6 +227,17 @@ class BakedSDFFactoModel(VolSDFModel):
                     func=set_weight,
                 )
             )
+        if self.config.use_position_encoding_regularization:
+            def set_position_encoding_frequence(step):
+                self.field.step_for_reg = step
+
+            callbacks.append(
+                TrainingCallback(
+                    where_to_run=[TrainingCallbackLocation.BEFORE_TRAIN_ITERATION],
+                    update_every_num_iters=1,
+                    func=set_position_encoding_frequence,
+                )
+            ) 
 
         return callbacks
 

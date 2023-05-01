@@ -152,7 +152,7 @@ class SurfaceModel(Model):
             num_images=self.num_train_data,
             use_average_appearance_embedding=self.config.use_average_appearance_embedding,
         )
-
+        
         # Collider
         if self.scene_box.collider_type == "near_far":
             self.collider = NearFarCollider(near_plane=self.scene_box.near, far_plane=self.scene_box.far)

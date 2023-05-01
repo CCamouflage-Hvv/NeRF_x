@@ -110,7 +110,7 @@ method_configs["depth-bakedsdf"] = Config(
         steps_per_eval_batch=5000,
         steps_per_save=20000,
         steps_per_eval_all_images=1000000,  # set to a very large model so we don't eval with all images
-        max_num_iterations=100000,
+        max_num_iterations=100000,#change it with SDF_field's max_num_iterations together
         mixed_precision=False,
     ),
     pipeline=VanillaPipelineConfig(
@@ -143,12 +143,17 @@ method_configs["depth-bakedsdf"] = Config(
                 use_reflections=True,
                 use_n_dot_v=True,
                 off_axis=True,
+                use_positional_encoding_regularization=True,
+                max_num_iterations=100000,#attached with the trainer's max_num_iterations.
+                max_position_encoding_regularization_iter_portion = 0.7,
+
             ),
             eikonal_loss_mult=0.01,
             background_model="none",
             proposal_weights_anneal_max_num_iters=1000,
             use_anneal_beta=True,
             eval_num_rays_per_chunk=1024,
+            use_occlusion_regularization=False,
         ),
     ),
     optimizers={

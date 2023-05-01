@@ -221,7 +221,7 @@ def ds_nerf_depth_loss(
         Depth loss scalar.
     """
     depth_mask = termination_depth > 0
-
+    #这里用的并不是体素密度来计算，而是采样点的权重。
     loss = -torch.log(weights + EPS) * torch.exp(-((steps - termination_depth[:, None]) ** 2) / (2 * sigma)) * lengths
     loss = loss.sum(-2) * depth_mask
     return torch.mean(loss)
@@ -263,6 +263,16 @@ def urban_radiance_field_depth_loss(
     loss = (expected_depth_loss + line_of_sight_loss) * depth_mask
     return torch.mean(loss)
 
+def occlusion_regularization_loss(
+    weights: TensorType[..., "num_samples", 1],
+    M_index: int = 10,    
+)->TensorType[0]:
+    occ_reg_loss = 0.0
+    # print(f"weights.shape = {weights.shape}") = ["num_rays","num_samples",1] 这意味着一次要计算一个光线束的occ_reg_loss
+    # print(f"weights type = {type(weights)}")
+    occ_reg_loss = sum(weights[:,:M_index,:].view(-1, M_index).sum(dim=1)/M_index)
+    return occ_reg_loss
+    
 
 def depth_loss(
     weights: TensorType[..., "num_samples", 1],

@@ -163,11 +163,13 @@ class NeRFEncoding(Encoding):
         if self.include_input:
             out_dim += self.in_dim
         return out_dim
-
     def forward(
         self,
         in_tensor: TensorType["bs":..., "input_dim"],
         covs: Optional[TensorType["bs":..., "input_dim", "input_dim"]] = None,
+        step: Optional[int] = None,
+        max_position_encoding_reg_step :Optional[int] = None,
+        regularization:Optional[bool] = False,
     ) -> TensorType["bs":..., "output_dim"]:
         """Calculates NeRF encoding. If covariances are provided the encodings will be integrated as proposed
             in mip-NeRF.
@@ -180,6 +182,7 @@ class NeRFEncoding(Encoding):
         """
         # TODO check scaling here but just comment it for now
         # in_tensor = 2 * torch.pi * in_tensor  # scale to [0, 2pi]
+        
         freqs = 2 ** torch.linspace(self.min_freq, self.max_freq, self.num_frequencies).to(in_tensor.device)
         # freqs = 2 ** (
         #    torch.sin(torch.linspace(self.min_freq, torch.pi / 2.0, self.num_frequencies)) * self.max_freq
@@ -188,6 +191,7 @@ class NeRFEncoding(Encoding):
         #     torch.linspace(self.min_freq, 1.0, self.num_frequencies).to(in_tensor.device) ** 0.2 * self.max_freq
         # )
 
+        
         if self.off_axis:
             scaled_inputs = torch.matmul(in_tensor, self.P.to(in_tensor.device))[..., None] * freqs
         else:
@@ -205,7 +209,29 @@ class NeRFEncoding(Encoding):
 
         if self.include_input:
             encoded_inputs = torch.cat([encoded_inputs, in_tensor], dim=-1)
+
+        #positional regularization for Free-NeRF
+        if(regularization ==True and step<=max_position_encoding_reg_step):
+            L_reg = encoded_inputs.shape[-1]-3
+            #print(f"encoded_inputs.shape = {encoded_inputs.shape}")
+            #print(f"encoded_inputs = {encoded_inputs}")
+            ones_index = int(step*(L_reg)/max_position_encoding_reg_step)+3
+            zeros_index =  int(step*(L_reg)/max_position_encoding_reg_step)+6
+            #encoded_inputs[:,:ones_index] doesn't have to change
+            encoded_inputs[:,ones_index:] = 0
+            if(zeros_index<L_reg+3):
+                encoded_inputs[:,ones_index+1:zeros_index] *= step*(L_reg)/max_position_encoding_reg_step - int(step*(L_reg)/max_position_encoding_reg_step)
+            #print(f"encoded_inputs = {encoded_inputs}")
         return encoded_inputs
+    
+    
+    def encoding_with_regularization(self,inputs,step,pe_reg_duration_iter):
+        return self.forward(step=step,
+                            max_position_encoding_reg_step=pe_reg_duration_iter,
+                            in_tensor=inputs,
+                            regularization=True
+                            )
+        
 
 
 class RFFEncoding(Encoding):
