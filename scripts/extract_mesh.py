@@ -92,7 +92,7 @@ class ExtractMesh:
 
             get_surface_sliding_with_contraction(
                 sdf=lambda x: (
-                    pipeline.model.field.forward_geonetwork(x)[:, 0] - self.marching_cube_threshold
+                    pipeline.model.field.forward_geonetwork(x,extract_mesh=True)[:, 0] - self.marching_cube_threshold
                 ).contiguous(),
                 resolution=self.resolution,
                 bounding_box_min=self.bounding_box_min,
@@ -108,7 +108,7 @@ class ExtractMesh:
             # for unisurf
             get_surface_occupancy(
                 occupancy_fn=lambda x: torch.sigmoid(
-                    10 * pipeline.model.field.forward_geonetwork(x)[:, 0].contiguous()
+                    10 * pipeline.model.field.forward_geonetwork(x,extract_mesh=True)[:, 0].contiguous()
                 ),
                 resolution=self.resolution,
                 bounding_box_min=self.bounding_box_min,
@@ -122,7 +122,7 @@ class ExtractMesh:
             # for sdf we can multi-scale extraction.
             print("sdf here")
             get_surface_sliding(
-                sdf=lambda x: pipeline.model.field.forward_geonetwork(x)[:, 0].contiguous(),
+                sdf=lambda x: pipeline.model.field.forward_geonetwork(x,extract_mesh=True)[:, 0].contiguous(),
                 resolution=self.resolution,
                 bounding_box_min=self.bounding_box_min,
                 bounding_box_max=self.bounding_box_max,
