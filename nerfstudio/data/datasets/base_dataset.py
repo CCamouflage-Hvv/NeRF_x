@@ -54,6 +54,16 @@ class InputDataset(Dataset):
 
     def __len__(self):
         return len(self._dataparser_outputs.image_filenames)
+    
+
+    #generate unseen random images for geometry regularization from reg-nerf
+    def generate_random_images(self,num_random_images:int =300)->Dict:
+        #这里只需要照抄其他的R矩阵，随机生成范围内的T向量（300个）
+        #得到这300个外参之后，内参是用类似降采样的方式，得到每个都是8*8的小图块（也就是reg-nerf中所说的patch）
+        #得到这个小图块之后的两种思路：
+        # 1、我希望直接在这里生成ray_bundle 光线束一样的输出，而不需要再去做像素随机采样，这样应该比较麻烦
+        # 2、先包装成get_data的输出，然后在ray_generators.那里构造一个新的camera类，利用这个类直接调用cameras.generate_rays，并设定取图像上面所有像素。这样应该比较省事。
+        a=1
 
     def get_numpy_image(self, image_idx: int) -> npt.NDArray[np.uint8]:
         """Returns the image of shape (H, W, 3 or 4).
@@ -133,6 +143,8 @@ class InputDataset(Dataset):
     def __getitem__(self, image_idx: int) -> Dict:
         data = self.get_data(image_idx)
         return data
+
+    
 
 
 class GeneralizedDataset(InputDataset):#这个类是用来处理输入的图像不是同一个尺寸的情况的

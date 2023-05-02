@@ -263,6 +263,14 @@ def urban_radiance_field_depth_loss(
     loss = (expected_depth_loss + line_of_sight_loss) * depth_mask
     return torch.mean(loss)
 
+def depth_consistency_loss(#from reg-NeRF
+        
+):
+    a = 1
+
+
+
+
 def occlusion_regularization_loss(
     weights: TensorType[..., "num_samples", 1],
     M_index: int = 10,    

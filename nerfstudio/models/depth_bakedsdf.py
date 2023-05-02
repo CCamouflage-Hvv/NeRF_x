@@ -30,8 +30,14 @@ class DepthBakedSDFModelConfig(BakedSDFModelConfig):
     """Rate of exponential decay."""
     depth_loss_type: DepthLossType = DepthLossType.DS_NERF
     """depth_loss_type used to calculate the depth loss"""
-    use_occlusion_regularization: bool =False
-    """whether use occlusion_regularization"""
+    
+    
+    use_occlusion_regularization: bool = False
+    """whether use occlusion_regularization from Free-NeRF"""
+    occlusion_regularization_loss_mult: float = 0.01
+    """occlusion regularization loss multiplying factor"""
+    use_geometry_regularization: bool = False
+    
 
 class DepthBakedSDFModel(BakedSDFFactoModel):
     config:DepthBakedSDFModelConfig
@@ -89,7 +95,7 @@ class DepthBakedSDFModel(BakedSDFFactoModel):
             loss_dict["depth_loss"] = self.config.depth_loss_mult * metrics_dict["depth_loss"]
 
             if metrics_dict is not None and "occ_reg_loss" in metrics_dict:
-                loss_dict["occ_reg_loss"] = metrics_dict["occ_reg_loss"]
+                loss_dict["occ_reg_loss"] = self.config.occlusion_regularization_loss_mult*metrics_dict["occ_reg_loss"]
 
         return loss_dict
 

@@ -334,7 +334,7 @@ class SDFStudio(DataParser):
             camera_to_worlds=camera_to_worlds[:, :3, :4],
             camera_type=CameraType.PERSPECTIVE,
         )
-
+        
         # TODO supports downsample
         cameras.rescale_output_resolution(scaling_factor=1.0 / self.config.downscale_factor)
 

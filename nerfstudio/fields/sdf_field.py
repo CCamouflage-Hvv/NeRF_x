@@ -168,6 +168,8 @@ class SDFFieldConfig(FieldConfig):
     """Padding added to the RGB outputs"""
     off_axis: bool = False
     """whether to use off axis encoding from mipnerf360"""
+
+
     use_positional_encoding_regularization :bool = False
     step_for_regularization: int = 0 
     """use to changed the positional encoding frequences"""
@@ -360,16 +362,19 @@ class SDFField(Field):
         """Set the anneal value for the proposal network."""
         self._cos_anneal_ratio = anneal
 
-    def forward_geonetwork(self, inputs):
+    def forward_geonetwork(self, 
+                           inputs,
+                           extract_mesh:Optional[bool] = False):
         """forward the geonetwork"""
         if self.use_grid_feature:
             positions = (inputs + 2.0) / 4.0
             feature = self.encoding(positions)
         else:
             feature = torch.zeros_like(inputs[:, :1].repeat(1, self.encoding.n_output_dims))
-        if(self.config.use_positional_encoding_regularization):
+        if(self.config.use_positional_encoding_regularization==True and extract_mesh==False):
             pe_reg_duration_iter = int(self.max_position_encoding_reg_portion*self.config.max_num_iterations)
-            #CONSOLE.print(f"[bold yellow]self.step_for_reg={self.step_for_reg}")#
+            # CONSOLE.print(f"[bold yellow]self.step_for_reg={self.step_for_reg}")
+            # CONSOLE.print(f"[bold yellow]pe_reg_duration_iter={pe_reg_duration_iter}")
             pe = self.position_encoding.encoding_with_regularization(inputs=inputs,
                                                                      step=self.step_for_reg,
                                                                      pe_reg_duration_iter=pe_reg_duration_iter)

@@ -108,7 +108,7 @@ method_configs["depth-bakedsdf"] = Config(
     trainer=TrainerConfig(
         steps_per_eval_image=5000,
         steps_per_eval_batch=5000,
-        steps_per_save=20000,
+        steps_per_save=2000,
         steps_per_eval_all_images=1000000,  # set to a very large model so we don't eval with all images
         max_num_iterations=100000,#change it with SDF_field's max_num_iterations together
         mixed_precision=False,
@@ -121,6 +121,7 @@ method_configs["depth-bakedsdf"] = Config(
             camera_optimizer=CameraOptimizerConfig(
                 mode="off", optimizer=AdamOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2)
             ),
+            use_random_unseen_viewpoints = False,
         ),
         model=DepthBakedSDFModelConfig(
             near_plane=0.2,
@@ -145,7 +146,7 @@ method_configs["depth-bakedsdf"] = Config(
                 off_axis=True,
                 use_positional_encoding_regularization=True,
                 max_num_iterations=100000,#attached with the trainer's max_num_iterations.
-                max_position_encoding_regularization_iter_portion = 0.7,
+                max_position_encoding_regularization_iter_portion = 0.2,
 
             ),
             eikonal_loss_mult=0.01,
@@ -154,16 +155,17 @@ method_configs["depth-bakedsdf"] = Config(
             use_anneal_beta=True,
             eval_num_rays_per_chunk=1024,
             use_occlusion_regularization=False,
+            occlusion_regularization_loss_mult = 0.01,
         ),
     ),
     optimizers={
         "proposal_networks": {
             "optimizer": AdamOptimizerConfig(lr=1e-2, eps=1e-15),
-            "scheduler": MultiStepSchedulerConfig(max_steps=250000),
+            "scheduler": MultiStepSchedulerConfig(max_steps=100000),
         },
         "fields": {
             "optimizer": AdamOptimizerConfig(lr=1e-2, eps=1e-15),
-            "scheduler": NeuSSchedulerConfig(warm_up_end=500, learning_rate_alpha=0.05, max_steps=250000),
+            "scheduler": NeuSSchedulerConfig(warm_up_end=500, learning_rate_alpha=0.05, max_steps=100000),
         },
     },
     viewer=ViewerConfig(num_rays_per_chunk=1 << 15),

@@ -288,6 +288,11 @@ class VanillaDataManagerConfig(InstantiateConfig):
     along with relevant information about camera intrinsics
     """
 
+    use_random_unseen_viewpoints :bool = False,
+    """use random unseen viewpoints from reg-nerf"""
+    num_random_unseen_viewpoints :int = 300,
+    """number of random unseen viewpoints from reg-nerf"""
+
 
 class VanillaDataManager(DataManager):  # pylint: disable=abstract-method
     """Basic stored data manager implementation.
@@ -315,6 +320,7 @@ class VanillaDataManager(DataManager):  # pylint: disable=abstract-method
         local_rank: int = 0,
         **kwargs,  # pylint: disable=unused-argument
     ):
+        
         self.config = config
         self.device = device
         self.world_size = world_size
@@ -323,6 +329,10 @@ class VanillaDataManager(DataManager):  # pylint: disable=abstract-method
         self.test_mode = test_mode
         self.test_split = "test" if test_mode in ["test", "inference"] else "val"
         self.dataparser = self.config.dataparser.setup()
+        self.use_random_unseen_viewpoints = self.config.use_random_unseen_viewpoints,
+        self.num_random_unseen_viewpoints = self.config.num_random_unseen_viewpoints,
+
+
 
         self.train_dataset = self.create_train_dataset()#GeneralizedDataset
         self.eval_dataset = self.create_eval_dataset()#GeneralizedDataset
@@ -423,6 +433,12 @@ class VanillaDataManager(DataManager):  # pylint: disable=abstract-method
         """Returns the next batch of data from the train dataloader."""
         self.train_count += 1
         image_batch = next(self.iter_train_image_dataloader)#这里得到像片集
+        
+        #reg-nerf的随机unseen像片集
+        if (self.config.use_random_unseen_viewpoints):
+            image_batch_random = self.train_dataset.generate_random_images(self.num_random_unseen_viewpoints)#这里使用
+        
+
         batch = self.train_pixel_sampler.sample(image_batch)#这里得到被选为光线的像素集
         ray_indices = batch["indices"]#这里得到一个indices.shape = (num_rays_per_batch, 3)  每一行代表一个被采为光线的像素的（像片号，行号，列号）
         ray_bundle = self.train_ray_generator(ray_indices)

@@ -215,6 +215,8 @@ class NeRFEncoding(Encoding):
             L_reg = encoded_inputs.shape[-1]-3
             #print(f"encoded_inputs.shape = {encoded_inputs.shape}")
             #print(f"encoded_inputs = {encoded_inputs}")
+            #print(f"step = {step}")
+            #print(f"max_position_encoding_reg_step = {max_position_encoding_reg_step}")
             ones_index = int(step*(L_reg)/max_position_encoding_reg_step)+3
             zeros_index =  int(step*(L_reg)/max_position_encoding_reg_step)+6
             #encoded_inputs[:,:ones_index] doesn't have to change
@@ -222,6 +224,8 @@ class NeRFEncoding(Encoding):
             if(zeros_index<L_reg+3):
                 encoded_inputs[:,ones_index+1:zeros_index] *= step*(L_reg)/max_position_encoding_reg_step - int(step*(L_reg)/max_position_encoding_reg_step)
             #print(f"encoded_inputs = {encoded_inputs}")
+            # print(f"encoded shape = {encoded_inputs.shape}")
+            # print(f"non-zeros counter for a element = {torch.nonzero(encoded_inputs[0,:]).shape[0]}")
         return encoded_inputs
     
     

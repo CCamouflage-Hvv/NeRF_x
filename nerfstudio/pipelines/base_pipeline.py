@@ -256,9 +256,18 @@ class VanillaPipeline(Pipeline):
         Args:
             step: current iteration step to update sampler if using DDP (distributed)
         """
-        ray_bundle, batch = self.datamanager.next_train(step)
-        model_outputs = self._model(ray_bundle)
-        metrics_dict = self.model.get_metrics_dict(model_outputs, batch)
+        if(self.datamanager.use_random_unseen_viewpoints == True):#refer to reg-nerf's geometry regularization
+            ray_bundle, batch,random_ray_bundle = self.datamanager.next_train(step)
+            model_outputs = self._model(ray_bundle)
+            metrics_dict = self.model.get_metrics_dict(model_outputs, batch,random_ray_bundle)
+            
+        else:
+            ray_bundle, batch = self.datamanager.next_train(step)
+            model_outputs = self._model(ray_bundle)
+            metrics_dict = self.model.get_metrics_dict(model_outputs, batch)
+        # ray_bundle, batch = self.datamanager.next_train(step)
+        # model_outputs = self._model(ray_bundle)
+        # metrics_dict = self.model.get_metrics_dict(model_outputs, batch)
 
         camera_opt_param_group = self.config.datamanager.camera_optimizer.param_group
         if camera_opt_param_group in self.datamanager.get_param_groups():
